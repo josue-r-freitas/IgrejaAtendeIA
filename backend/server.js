@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { routeMessage } from './agents/agentRouter.js';
+import { routeMessage, pausedChats, resumeAgent, pauseAgent } from './agents/agentRouter.js';
 import { sendWhatsAppMessage, sendInstagramMessage } from './services/messagingService.js';
+import { sessions } from './services/memoryService.js';
 
 dotenv.config();
 
@@ -138,6 +139,82 @@ app.post('/webhooks/instagram', async (req, res) => {
   } catch (error) {
     console.error('[Webhook Instagram Error]:', error.message);
     res.status(500).send('Internal Server Error');
+  }
+});
+
+// Retrieve list of active chats/sessions with history
+app.get('/api/chats', (req, res) => {
+  const result = [];
+  for (const [sessionId, messages] of sessions.entries()) {
+    const lastMsgObj = messages[messages.length - 1];
+    result.push({
+      id: sessionId,
+      phone: sessionId,
+      name: sessionId.split('@')[0], // fallback name
+      channel: 'whatsapp',
+      status: pausedChats.has(sessionId) ? 'human_active' : 'ia_active',
+      agent: 'Recepcionista IA',
+      unread: 0,
+      lastMessage: lastMsgObj ? lastMsgObj.text : '',
+      time: lastMsgObj ? new Date(lastMsgObj.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      messages: messages.map(msg => ({
+        sender: msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'ai' : 'system',
+        text: msg.text,
+        time: new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }))
+    });
+  }
+  res.json(result);
+});
+
+// Retrieve list of paused chats
+app.get('/api/chats/paused', (req, res) => {
+  res.json({ paused: Array.from(pausedChats) });
+});
+
+// Resume AI for a session
+app.post('/api/chats/resume', (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId) {
+    return res.status(400).json({ error: 'sessionId is required' });
+  }
+  resumeAgent(sessionId);
+  console.log(`[Admin] Resumed AI for session: ${sessionId}`);
+  res.json({ status: 'success', message: `AI resumed for ${sessionId}` });
+});
+
+// Pause AI for a session
+app.post('/api/chats/pause', (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId) {
+    return res.status(400).json({ error: 'sessionId is required' });
+  }
+  pauseAgent(sessionId);
+  console.log(`[Admin] Paused AI for session: ${sessionId}`);
+  res.json({ status: 'success', message: `AI paused for ${sessionId}` });
+});
+
+// Send manual message from operator
+app.post('/api/chats/send', async (req, res) => {
+  const { sessionId, text } = req.body;
+  if (!sessionId || !text) {
+    return res.status(400).json({ error: 'sessionId and text are required' });
+  }
+  try {
+    await sendWhatsAppMessage(sessionId, text);
+    // Add to history
+    const history = sessions.get(sessionId) || [];
+    history.push({
+      role: 'assistant',
+      text: text,
+      timestamp: new Date().toISOString()
+    });
+    sessions.set(sessionId, history);
+    console.log(`[Admin] Operator sent message to ${sessionId}: "${text}"`);
+    res.json({ status: 'success' });
+  } catch (err) {
+    console.error('[Admin Error] Failed to send operator message:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 

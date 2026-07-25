@@ -1,5 +1,5 @@
 // In-memory chat storage for session management
-const sessions = new Map();
+export const sessions = new Map();
 
 // Max memory size per session to prevent token bloating
 const MAX_HISTORY_SIZE = 10;

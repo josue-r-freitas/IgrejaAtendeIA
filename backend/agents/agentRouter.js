@@ -54,7 +54,7 @@ const agentConfigs = {
 };
 
 // Simulated human takeover active list (temporary database)
-const pausedChats = new Set();
+export const pausedChats = new Set();
 
 /**
  * Classify user intent and route to the correct agent

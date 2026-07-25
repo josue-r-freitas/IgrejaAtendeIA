@@ -30,13 +30,7 @@ export async function sendWhatsAppMessage(to, text) {
 
     const response = await axios.post(url, {
       number: formattedTo,
-      options: {
-        delay: 1200,
-        presence: "composing"
-      },
-      textMessage: {
-        text: text
-      }
+      text: text
     }, {
       headers: {
         'apikey': EVOLUTION_API_KEY,
@@ -46,7 +40,7 @@ export async function sendWhatsAppMessage(to, text) {
 
     return response.data;
   } catch (error) {
-    console.error('[Messaging Error] Failed to send WhatsApp message:', error.response?.data || error.message);
+    console.error('[Messaging Error] Failed to send WhatsApp message:', JSON.stringify(error.response?.data, null, 2) || error.message);
     throw error;
   }
 }

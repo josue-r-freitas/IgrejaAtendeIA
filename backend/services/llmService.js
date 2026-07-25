@@ -39,52 +39,59 @@ Ao identificar solicitações que necessitem de atendimento humano emergencial (
   // --- GOOGLE GEMINI ---
   if (modelName.includes('gemini')) {
     const isFlash = modelName.includes('flash');
-    const selectedModel = isFlash ? 'gemini-1.5-flash' : 'gemini-1.5-pro';
+    // Map to Gemini's official stable aliases which always point to the latest active version
+    const selectedModel = isFlash ? 'gemini-flash-latest' : 'gemini-pro-latest';
 
     // Mock response if key is missing or mock
     if (!GEMINI_API_KEY || GEMINI_API_KEY === 'mock_key') {
       return getMockResponse(agentConfig, userMessage) + " [Simulação Gemini]";
     }
 
-    const ai = gemini.getGenerativeModel({ 
-      model: selectedModel,
-      systemInstruction: systemInstruction
-    });
+    try {
+      const ai = gemini.getGenerativeModel({ 
+        model: selectedModel,
+        systemInstruction: systemInstruction
+      });
 
-    // Format history for Gemini chat structure
-    const chat = ai.startChat({
-      history: history.geminiHistory || []
-    });
+      // Format history for Gemini chat structure
+      const chat = ai.startChat({
+        history: history.geminiHistory || []
+      });
 
-    const result = await chat.sendMessage(userMessage);
-    const response = await result.response;
-    return response.text();
+      const result = await chat.sendMessage(userMessage);
+      const response = await result.response;
+      return response.text();
+    } catch (err) {
+      console.warn(`[LLM Warning] Gemini failed, falling back to OpenAI: ${err.message}`);
+      // If OpenAI key is missing or mock, throw the original error
+      if (!OPENAI_API_KEY || OPENAI_API_KEY === 'mock_key') {
+        throw err;
+      }
+    }
   } 
   
   // --- OPENAI GPT ---
-  else {
-    const isMini = modelName.includes('mini');
-    const selectedModel = isMini ? 'gpt-4o-mini' : 'gpt-4o';
+  const isMini = modelName.includes('mini');
+  const selectedModel = isMini ? 'gpt-4o-mini' : 'gpt-4o';
 
-    // Mock response if key is missing or mock
-    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'mock_key') {
-      return getMockResponse(agentConfig, userMessage) + " [Simulação GPT-4o]";
-    }
-
-    const messages = [
-      { role: 'system', content: systemInstruction },
-      ...(history.openaiHistory || []),
-      { role: 'user', content: userMessage }
-    ];
-
-    const response = await openai.chat.completions.create({
-      model: selectedModel,
-      messages: messages,
-      temperature: 0.7
-    });
-
-    return response.choices[0].message.content;
+  // Mock response if key is missing or mock
+  if (!OPENAI_API_KEY || OPENAI_API_KEY === 'mock_key') {
+    return getMockResponse(agentConfig, userMessage) + " [Simulação GPT-4o]";
   }
+
+  const messages = [
+    { role: 'system', content: systemInstruction },
+    ...(history.openaiHistory || []),
+    { role: 'user', content: userMessage }
+  ];
+
+  const response = await openai.chat.completions.create({
+    model: selectedModel,
+    messages: messages,
+    temperature: 0.7
+  });
+
+  return response.choices[0].message.content;
 }
 
 /**

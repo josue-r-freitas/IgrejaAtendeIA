@@ -63,8 +63,6 @@ body {
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   display: flex;
-  flex-col;
-  display: flex;
   flex-direction: column;
   padding: 1.5rem 1rem;
   gap: 1.5rem;
@@ -438,4 +436,10 @@ input:checked + .slider:before {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Typing Indicator Dot Bounce */
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1.0); }
 }

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   MessageSquare, User, Bot, PhoneCall, Send, 
-  CheckCheck, AlertCircle, Search, UserCheck, Shield 
+  CheckCheck, AlertCircle, Search, UserCheck, Shield,
+  Instagram, MessageCircle
 } from 'lucide-react';
 
 export default function PainelAtendimentos() {
@@ -10,6 +11,7 @@ export default function PainelAtendimentos() {
       id: 1,
       name: "Mariana Souza",
       phone: "+55 11 98765-4321",
+      channel: "whatsapp",
       status: "transbordo", // transbordo pastoral
       agent: "Oração IA",
       unread: 1,
@@ -26,6 +28,7 @@ export default function PainelAtendimentos() {
       id: 2,
       name: "Carlos Eduardo (Novo Visitante)",
       phone: "+55 11 97654-3210",
+      channel: "whatsapp",
       status: "ia_active",
       agent: "Recepcionista IA",
       unread: 0,
@@ -41,7 +44,8 @@ export default function PainelAtendimentos() {
     {
       id: 3,
       name: "Lucas Lima",
-      phone: "+55 11 96543-2109",
+      phone: "@lucas_lima_oficial",
+      channel: "instagram",
       status: "ia_active",
       agent: "Integração IA",
       unread: 0,
@@ -52,11 +56,35 @@ export default function PainelAtendimentos() {
         { sender: 'ai', text: 'Que bênção, Lucas! Ficamos muito felizes. Gostaria de participar de um Grupo Pequeno na sua região?', time: '11:39' },
         { sender: 'user', text: 'Qual Célula/PG fica perto do bairro Jardim das Flores?', time: '11:40' }
       ]
+    },
+    {
+      id: 4,
+      name: "Renata Vasconcellos",
+      phone: "@renatavasconcellos",
+      channel: "instagram",
+      status: "human_active",
+      agent: "Recepcionista IA",
+      unread: 0,
+      lastMessage: "Olá! Vocês fazem transmissões ao vivo pelo Instagram ou YouTube?",
+      time: "10:15",
+      messages: [
+        { sender: 'user', text: 'Olá! Vocês fazem transmissões ao vivo pelo Instagram ou YouTube?', time: '10:12' },
+        { sender: 'human_operator', text: 'Olá, Renata! Transmitimos nossos cultos de domingo às 19h ao vivo pelo canal do YouTube "Igreja Central". No Instagram, costumamos postar os melhores momentos e lives ocasionais!', time: '10:15' }
+      ]
     }
   ]);
 
   const [activeChat, setActiveChat] = useState(chats[0]);
   const [inputText, setInputText] = useState('');
+  const [activeChannelFilter, setActiveChannelFilter] = useState('todos');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredChats = chats.filter(chat => {
+    const matchesChannel = activeChannelFilter === 'todos' || chat.channel === activeChannelFilter;
+    const matchesSearch = chat.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          chat.phone.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesChannel && matchesSearch;
+  });
 
   const handleSendMessage = () => {
     if (!inputText.trim()) return;
@@ -84,24 +112,55 @@ export default function PainelAtendimentos() {
   return (
     <div style={{ height: 'calc(100vh - 150px)', display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.25rem' }}>
       
-      {/* Lista Lateral de Atendimentos WhatsApp */}
+      {/* Lista Lateral de Atendimentos */}
       <div className="card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Conversas no Zap</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Conversas Ativas</h3>
           <span style={{ fontSize: '0.75rem', background: 'rgba(244, 63, 94, 0.2)', color: '#fda4af', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>
-            1 Alerta Pastoral
+            {chats.filter(c => c.status === 'transbordo').length} Alerta(s)
           </span>
+        </div>
+
+        {/* Filtro de Canais */}
+        <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.8)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          {['todos', 'whatsapp', 'instagram'].map((chan) => (
+            <button
+              key={chan}
+              onClick={() => setActiveChannelFilter(chan)}
+              style={{
+                flex: 1,
+                background: activeChannelFilter === chan ? 'rgba(99, 102, 241, 0.18)' : 'transparent',
+                border: 'none',
+                color: activeChannelFilter === chan ? '#a5b4fc' : 'var(--text-muted)',
+                padding: '0.4rem 0.5rem',
+                borderRadius: '6px',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                textTransform: 'capitalize'
+              }}
+            >
+              {chan === 'todos' ? 'Todos' : chan === 'whatsapp' ? 'WhatsApp' : 'Instagram'}
+            </button>
+          ))}
         </div>
 
         {/* Search */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(15, 23, 42, 0.8)', padding: '0.5rem 0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
           <Search size={16} color="var(--text-muted)" />
-          <input type="text" placeholder="Buscar por nome ou fone..." style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', width: '100%' }} />
+          <input 
+            type="text" 
+            placeholder="Buscar por nome ou canal..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', fontSize: '0.85rem', width: '100%' }} 
+          />
         </div>
 
         {/* Chat Items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', flex: 1 }}>
-          {chats.map(chat => (
+          {filteredChats.map(chat => (
             <div
               key={chat.id}
               onClick={() => setActiveChat(chat)}
@@ -117,7 +176,14 @@ export default function PainelAtendimentos() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>{chat.name}</span>
+                <span style={{ fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  {chat.channel === 'instagram' ? (
+                    <Instagram size={14} style={{ color: '#c084fc' }} />
+                  ) : (
+                    <MessageCircle size={14} style={{ color: '#34d399' }} />
+                  )}
+                  {chat.name}
+                </span>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>{chat.time}</span>
               </div>
 
@@ -135,13 +201,18 @@ export default function PainelAtendimentos() {
                     <AlertCircle size={12} /> Assumir Chat
                   </span>
                 ) : chat.status === 'human_active' ? (
-                  <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 600 }}>● Atendimento Humano</span>
+                  <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 600 }}>● Humano</span>
                 ) : (
-                  <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 600 }}>● IA Atendendo</span>
+                  <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 600 }}>● IA</span>
                 )}
               </div>
             </div>
           ))}
+          {filteredChats.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+              Nenhuma conversa encontrada
+            </div>
+          )}
         </div>
       </div>
 
@@ -151,7 +222,18 @@ export default function PainelAtendimentos() {
         {/* Header do Chat */}
         <div style={{ padding: '1rem 1.5rem', background: 'rgba(15, 23, 42, 0.8)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{activeChat.name}</h3>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {activeChat.name}
+              {activeChat.channel === 'instagram' ? (
+                <span style={{ fontSize: '0.7rem', background: 'rgba(139, 92, 246, 0.15)', color: '#c084fc', padding: '2px 8px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <Instagram size={10} /> Instagram Direct
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.7rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 8px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <MessageCircle size={10} /> WhatsApp
+                </span>
+              )}
+            </h3>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{activeChat.phone}</span>
           </div>
 
@@ -218,7 +300,7 @@ export default function PainelAtendimentos() {
         <div style={{ padding: '1rem', background: 'rgba(15, 23, 42, 0.9)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.75rem' }}>
           <input
             type="text"
-            placeholder={activeChat.status === 'ia_active' ? "Digite para assumir e responder no lugar da IA..." : "Escreva sua resposta como operador..."}
+            placeholder={activeChat.status === 'ia_active' ? (activeChat.channel === 'instagram' ? "Digite para assumir e responder no Instagram Direct..." : "Digite para assumir e responder no WhatsApp...") : "Escreva sua resposta como operador..."}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -233,7 +315,7 @@ export default function PainelAtendimentos() {
             }}
           />
           <button className="btn btn-primary" onClick={handleSendMessage}>
-            <Send size={18} /> Enviar no Zap
+            <Send size={18} /> {activeChat.channel === 'instagram' ? 'Enviar no Direct' : 'Enviar no Zap'}
           </button>
         </div>
 

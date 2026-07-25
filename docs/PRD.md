@@ -33,7 +33,7 @@ A plataforma substitui chatbots tradicionais engessados por uma **Secretaria Dig
 ### 2.4. Membro / Visitante da Igreja
 * **Objetivo:** Obter respostas rápidas, fazer pedidos de oração, inscrever-se em eventos e agendar atendimentos.
 * **Necessidades:**
-  * Comunicação via WhatsApp 24 horas por dia, 7 dias por semana.
+  * Comunicação via WhatsApp e Instagram Direct 24 horas por dia, 7 dias por semana.
   * Diálogo humanizado, sem menus confusos de discagem de opções numeradas ("Digite 1 para...").
 
 ---
@@ -41,8 +41,9 @@ A plataforma substitui chatbots tradicionais engessados por uma **Secretaria Dig
 ## 3. Requisitos Funcionais
 
 ### RF-01: Atendimento Multicanal com Agentes de IA
-* O sistema deve integrar com o WhatsApp (via API Oficial Meta / Evolution / Z-API).
+* O sistema deve integrar com o WhatsApp (via API Oficial Meta / Evolution / Z-API) e com o Instagram Direct (via Instagram Graph API da Meta).
 * A IA deve ser capaz de responder com tom de voz acolhedor, fundamentado na base de dados e conhecimentos específicos da igreja local.
+* Cada agente de IA pode ser ativado ou desativado individualmente por canal (WhatsApp e/ou Instagram).
 
 ### RF-02: Transbordo Humano Inteligente (Human-in-the-loop)
 * Quando a IA detectar um tema sensível (ex: crise pessoal, pedido grave de oração, questão financeira sigilosa) ou solicitação explícita de falar com um humano, a conversa deve ser imediatamente transferida para a fila de atendimento humano no painel da secretária/pastor.

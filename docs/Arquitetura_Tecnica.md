@@ -3,11 +3,11 @@
 ## 1. Visão Geral da Arquitetura (Diagrama de Alto Nível)
 
 ```
- [Usuário / WhatsApp / Web]
+ [Usuário / WhatsApp / Instagram / Web]
             │
             ▼
  ┌────────────────────────┐
- │   Gateway Mensageria   │ (Evolution API / Meta Cloud API)
+ │   Gateway Mensageria   │ (Evolution API / Meta Graph & Cloud API)
  └──────────┬─────────────┘
             │ Webhook
             ▼
@@ -31,14 +31,17 @@
 
 ## 2. Componentes da Solução
 
-### 2.1. Gateway de Mensageria (WhatsApp Integration)
+### 2.1. Gateway de Mensageria (WhatsApp & Instagram Integration)
 * Recebe e envia mensagens via Webhook.
-* Suporta Evolution API / Z-API / WhatsApp Business Cloud API.
+* Suporta Evolution API / Z-API / WhatsApp Business Cloud API (WhatsApp) e Meta Graph API (Instagram Direct).
 * Trata fila de mensagens com Redis/BullMQ para resiliência e concorrência.
 
 ### 2.2. Engine de Agentes de IA & Router
 * Classifica a intenção da mensagem e roteia para o agente especialista correto (Recepcionista, Secretária, Integração, Oração, etc.).
 * Gerencia o estado da conversa (Memória de curto e longo prazo).
+* Permite configuração do provedor de LLM por agente:
+  * **OpenAI:** GPT-4o, GPT-4o Mini.
+  * **Google Gemini:** Gemini 1.5 Pro, Gemini 1.5 Flash.
 * Executa *Function Calling* para consultar ou gravar dados no sistema da igreja.
 
 ### 2.3. Base de Conhecimento RAG (Retrieval-Augmented Generation)

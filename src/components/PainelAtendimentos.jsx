@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   MessageSquare, User, Bot, PhoneCall, Send, 
   CheckCheck, AlertCircle, Search, UserCheck, Shield,
-  Instagram, MessageCircle
+  Instagram, MessageCircle, RefreshCw
 } from 'lucide-react';
 
 export default function PainelAtendimentos() {
-  const [chats, setChats] = useState([
+  const [liveChats, setLiveChats] = useState([]);
+  const mockChats = [
     {
-      id: 1,
+      id: 'mock-1',
       name: "Mariana Souza",
       phone: "+55 11 98765-4321",
       channel: "whatsapp",
@@ -25,7 +26,7 @@ export default function PainelAtendimentos() {
       ]
     },
     {
-      id: 2,
+      id: 'mock-2',
       name: "Carlos Eduardo (Novo Visitante)",
       phone: "+55 11 97654-3210",
       channel: "whatsapp",
@@ -42,7 +43,7 @@ export default function PainelAtendimentos() {
       ]
     },
     {
-      id: 3,
+      id: 'mock-3',
       name: "Lucas Lima",
       phone: "@lucas_lima_oficial",
       channel: "instagram",
@@ -58,7 +59,7 @@ export default function PainelAtendimentos() {
       ]
     },
     {
-      id: 4,
+      id: 'mock-4',
       name: "Renata Vasconcellos",
       phone: "@renatavasconcellos",
       channel: "instagram",
@@ -72,9 +73,37 @@ export default function PainelAtendimentos() {
         { sender: 'human_operator', text: 'Olá, Renata! Transmitimos nossos cultos de domingo às 19h ao vivo pelo canal do YouTube "Igreja Central". No Instagram, costumamos postar os melhores momentos e lives ocasionais!', time: '10:15' }
       ]
     }
-  ]);
+  ];
 
-  const [activeChat, setActiveChat] = useState(chats[0]);
+  // Fetch real chats from backend periodically
+  useEffect(() => {
+    const fetchChats = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/chats');
+        const data = await res.json();
+        setLiveChats(data);
+      } catch (err) {
+        console.error('Error fetching live chats:', err);
+      }
+    };
+    fetchChats();
+    const interval = setInterval(fetchChats, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Merge live chats and mock chats (avoiding duplicates)
+  const chats = [...liveChats];
+  mockChats.forEach(mock => {
+    if (!chats.some(c => c.phone === mock.phone)) {
+      chats.push(mock);
+    }
+  });
+
+  const [activeChat, setActiveChat] = useState(null);
+  
+  // Set active chat automatically on load or if active chat is no longer in the list
+  const currentActiveChat = activeChat ? chats.find(c => c.phone === activeChat.phone) || activeChat : chats[0] || mockChats[0];
+
   const [inputText, setInputText] = useState('');
   const [activeChannelFilter, setActiveChannelFilter] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,8 +115,21 @@ export default function PainelAtendimentos() {
     return matchesChannel && matchesSearch;
   });
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputText.trim()) return;
+
+    // Send via API if it is a live JID number
+    if (currentActiveChat.phone.includes('@')) {
+      try {
+        await fetch('http://localhost:5000/api/chats/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: currentActiveChat.phone, text: inputText })
+        });
+      } catch (err) {
+        console.error('Error sending message:', err);
+      }
+    }
 
     const newMessage = {
       sender: 'human_operator',
@@ -95,18 +137,43 @@ export default function PainelAtendimentos() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    const updatedMessages = [...activeChat.messages, newMessage];
-    const updatedChat = { ...activeChat, messages: updatedMessages, lastMessage: inputText, time: newMessage.time };
+    const updatedMessages = [...currentActiveChat.messages, newMessage];
+    const updatedChat = { ...currentActiveChat, messages: updatedMessages, lastMessage: inputText, time: newMessage.time };
 
     setActiveChat(updatedChat);
-    setChats(chats.map(c => c.id === activeChat.id ? updatedChat : c));
     setInputText('');
   };
 
-  const handleTakeover = () => {
-    const updated = { ...activeChat, status: 'human_active' };
+  const handleTakeover = async () => {
+    if (currentActiveChat.phone.includes('@')) {
+      try {
+        await fetch('http://localhost:5000/api/chats/pause', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: currentActiveChat.phone })
+        });
+      } catch (err) {
+        console.error('Error pausing agent:', err);
+      }
+    }
+    const updated = { ...currentActiveChat, status: 'human_active' };
     setActiveChat(updated);
-    setChats(chats.map(c => c.id === activeChat.id ? updated : c));
+  };
+
+  const handleResumeIA = async () => {
+    if (currentActiveChat.phone.includes('@')) {
+      try {
+        await fetch('http://localhost:5000/api/chats/resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: currentActiveChat.phone })
+        });
+      } catch (err) {
+        console.error('Error resuming agent:', err);
+      }
+    }
+    const updated = { ...currentActiveChat, status: 'ia_active' };
+    setActiveChat(updated);
   };
 
   return (
@@ -167,8 +234,8 @@ export default function PainelAtendimentos() {
               style={{
                 padding: '0.85rem',
                 borderRadius: 'var(--radius-md)',
-                background: activeChat.id === chat.id ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                border: activeChat.id === chat.id ? '1px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                background: currentActiveChat.id === chat.id ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                border: currentActiveChat.id === chat.id ? '1px solid var(--accent-primary)' : '1px solid var(--border-color)',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
@@ -223,8 +290,8 @@ export default function PainelAtendimentos() {
         <div style={{ padding: '1rem 1.5rem', background: 'rgba(15, 23, 42, 0.8)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {activeChat.name}
-              {activeChat.channel === 'instagram' ? (
+              {currentActiveChat.name}
+              {currentActiveChat.channel === 'instagram' ? (
                 <span style={{ fontSize: '0.7rem', background: 'rgba(139, 92, 246, 0.15)', color: '#c084fc', padding: '2px 8px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                   <Instagram size={10} /> Instagram Direct
                 </span>
@@ -234,26 +301,26 @@ export default function PainelAtendimentos() {
                 </span>
               )}
             </h3>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{activeChat.phone}</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{currentActiveChat.phone}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {activeChat.status === 'transbordo' && (
+            {currentActiveChat.status === 'ia_active' && (
               <button className="btn btn-primary" onClick={handleTakeover} style={{ background: 'var(--gradient-rose)', fontSize: '0.82rem', padding: '0.4rem 0.9rem' }}>
-                <UserCheck size={16} /> Assumir Atendimento Humano
+                <UserCheck size={16} /> Assumir
               </button>
             )}
-            {activeChat.status === 'human_active' && (
-              <span style={{ fontSize: '0.8rem', background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', padding: '0.35rem 0.85rem', borderRadius: '20px', fontWeight: 600 }}>
-                Modo Operador Ativo (IA Pausada)
-              </span>
+            {currentActiveChat.status === 'human_active' && (
+              <button className="btn btn-secondary" onClick={handleResumeIA} style={{ fontSize: '0.82rem', padding: '0.4rem 0.9rem' }}>
+                <RefreshCw size={16} /> Devolver para IA
+              </button>
             )}
           </div>
         </div>
 
         {/* Área das Mensagens */}
         <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.5) 0%, rgba(11, 15, 25, 0.9) 100%)' }}>
-          {activeChat.messages.map((m, idx) => {
+          {currentActiveChat.messages.map((m, idx) => {
             if (m.sender === 'system') {
               return (
                 <div key={idx} style={{ textAlign: 'center', margin: '0.5rem 0' }}>
@@ -277,7 +344,7 @@ export default function PainelAtendimentos() {
               }}>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                   {isUser ? <User size={12} /> : isAI ? <Bot size={12} color="#a5b4fc" /> : <UserCheck size={12} color="#38bdf8" />}
-                  <span>{isUser ? activeChat.name : isAI ? activeChat.agent : 'Você (Operador)'} • {m.time}</span>
+                  <span>{isUser ? currentActiveChat.name : isAI ? currentActiveChat.agent : 'Você (Operador)'} • {m.time}</span>
                 </div>
 
                 <div style={{
@@ -300,7 +367,7 @@ export default function PainelAtendimentos() {
         <div style={{ padding: '1rem', background: 'rgba(15, 23, 42, 0.9)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.75rem' }}>
           <input
             type="text"
-            placeholder={activeChat.status === 'ia_active' ? (activeChat.channel === 'instagram' ? "Digite para assumir e responder no Instagram Direct..." : "Digite para assumir e responder no WhatsApp...") : "Escreva sua resposta como operador..."}
+            placeholder={currentActiveChat.status === 'ia_active' ? (currentActiveChat.channel === 'instagram' ? "Assuma para responder no Instagram..." : "Assuma para responder no WhatsApp...") : "Escreva sua resposta como operador..."}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -315,7 +382,7 @@ export default function PainelAtendimentos() {
             }}
           />
           <button className="btn btn-primary" onClick={handleSendMessage}>
-            <Send size={18} /> {activeChat.channel === 'instagram' ? 'Enviar no Direct' : 'Enviar no Zap'}
+            <Send size={18} /> Enviar
           </button>
         </div>
 

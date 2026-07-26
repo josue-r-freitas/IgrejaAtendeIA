@@ -36,6 +36,13 @@ app.post('/webhooks/whatsapp', async (req, res) => {
     }
 
     const sessionId = data.key.remoteJid; // Unique contact JID
+
+    // Ignore group messages (group JIDs end with @g.us)
+    if (sessionId && sessionId.endsWith('@g.us')) {
+      console.log(`[Webhook WhatsApp] Ignored group message from ${sessionId}`);
+      return res.status(200).send('Ignored: Group message');
+    }
+
     const textMessage = data.message?.conversation || 
                         data.message?.extendedTextMessage?.text || 
                         data.message?.imageMessage?.caption ||
